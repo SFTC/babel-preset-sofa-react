@@ -2,8 +2,7 @@
 
 module.exports = function(api, opts) {
   const env = process.env.BABEL_ENV || process.env.NODE_ENV;
-
-  const isEnvDevelopment = env === 'development';
+  let isEnvDevelopment = env === 'development';
   const isEnvProduction = env === 'production';
   const isEnvTest = env === 'test';
 
@@ -16,6 +15,36 @@ module.exports = function(api, opts) {
         '.'
     );
   }
+
+  const testPresets = [
+    [
+      require('@babel/preset-env').default,
+      {
+        targets: {
+          node: 'current',
+        },
+      },
+    ], [
+      require('@babel/preset-react').default,
+      {
+        development: true,
+        useBuiltIns: true,
+      },
+    ]
+  ]
+
+  const productionPresets = [
+    require('@babel/preset-env').default,
+    {
+      targets: {
+        ie: 9,
+      },
+      ignoreBrowserslistConfig: true,
+      useBuiltIns: false,
+      modules: false,
+      exclude: ['transform-typeof-symbol'],
+    },
+  ]
 
   return {
     presets: [
@@ -62,6 +91,13 @@ module.exports = function(api, opts) {
       ],
     ].filter(Boolean),
     plugins: [
+      // 不明白这个装饰器的插件跟哪个冲突了 非得放到第一个才OK；
+      [
+        require('@babel/plugin-proposal-decorators').default,
+        {
+          "legacy": true
+        }
+      ],
       // Experimental macros support. Will be documented after it's had some time
       // in the wild.
       require('babel-plugin-macros'),
@@ -105,6 +141,8 @@ module.exports = function(api, opts) {
           // absoluteRuntime: absoluteRuntimePath,
         },
       ],
+      // Adds syntax support for import()
+      require('@babel/plugin-syntax-dynamic-import').default,
       isEnvProduction && [
         // Remove PropTypes from production build
         require('babel-plugin-transform-react-remove-prop-types').default,
@@ -117,8 +155,6 @@ module.exports = function(api, opts) {
       // Treat React JSX elements as value types and hoist them to the highest scope
       // 我有点无法感知这个的用意
       isEnvProduction && require('babel-plugin-transform-react-constant-elements').default,
-      // Adds syntax support for import()
-      require('@babel/plugin-syntax-dynamic-import').default,
       isEnvTest &&
         // Transform dynamic import to require
         require('babel-plugin-dynamic-import-node'),
